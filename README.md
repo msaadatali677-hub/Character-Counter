@@ -6,7 +6,7 @@ It provides real-time text analysis, allowing users to instantly count **charact
 
 ## 🚀 Live Demo
 
-👉 **[View Live Demo](YOUR-LIVE-DEMO-LINK)**
+👉 **[View Live Demo](https://character-counter-umber-mu.vercel.app/)**
 
 > Replace `YOUR-LIVE-DEMO-LINK` with your actual GitHub Pages or Vercel URL.
 
