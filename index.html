@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Character Counter — Count Characters, Words & Sentences Instantly</title>
+  <meta name="description" content="A clean, modern character counter that tracks characters, words, sentences and lines in real time." />
+
+  <!-- Google Fonts: Space Grotesk for display, Inter for body/data -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =========================================================
+   DESIGN TOKENS
+   ========================================================= */
+:root {
+  --bg: #070b14;
+  --bg-alt: #0b1120;
+
+  --glass: rgba(255, 255, 255, 0.045);
+  --glass-strong: rgba(255, 255, 255, 0.07);
+  --border: rgba(148, 163, 184, 0.14);
+  --border-hover: rgba(148, 163, 184, 0.28);
+
+  --text-primary: #eaf1fb;
+  --text-secondary: #8c9bb5;
+  --text-muted: #5b6880;
+
+  --blue: #3b82f6;
+  --cyan: #22d3ee;
+  --gradient: linear-gradient(120deg, var(--blue), var(--cyan));
+  --gradient-soft: linear-gradient(120deg, rgba(59, 130, 246, 0.16), rgba(34, 211, 238, 0.16));
+
+  --danger: #f87171;
+
+  --font-display: "Space Grotesk", "Inter", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* =========================================================
+   RESET & BASE
+   ========================================================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Ambient decorative glow behind the whole page */
+.bg-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(720px circle at 15% -10%, rgba(59, 130, 246, 0.20), transparent 60%),
+    radial-gradient(600px circle at 100% 10%, rgba(34, 211, 238, 0.14), transparent 55%),
+    radial-gradient(900px circle at 50% 120%, rgba(59, 130, 246, 0.10), transparent 60%);
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 64px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+.header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  background: var(--glass);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 999px;
+}
+
+.eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.18);
+  animation: pulse 2s var(--ease) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 6vw, 3.4rem);
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, #ffffff 30%, var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1.05rem;
+  max-width: 440px;
+}
+
+/* =========================================================
+   MAIN PANEL
+   ========================================================= */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Reusable glass card look */
+.editor-card,
+.rail-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  padding: 20px;
+  transition: border-color 0.3s var(--ease);
+}
+
+.editor-card:hover,
+.rail-card:hover {
+  border-color: var(--border-hover);
+}
+
+/* ---- Editor toolbar ---- */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.editor-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 8px 13px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s var(--ease);
+}
+
+.btn .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-ghost:hover {
+  color: var(--text-primary);
+  border-color: var(--cyan);
+  background: rgba(34, 211, 238, 0.08);
+  transform: translateY(-1px);
+}
+
+.btn-danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* ---- Textarea ---- */
+.textarea-wrap {
+  position: relative;
+}
+
+.text-input {
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  background: rgba(3, 7, 15, 0.55);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.65;
+  padding: 18px;
+  outline: none;
+  transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.text-input::placeholder {
+  color: var(--text-muted);
+}
+
+.text-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.10);
+}
+
+/* Empty state overlay — shown only via JS when textarea is blank */
+.empty-state {
+  position: absolute;
+  inset: 1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  pointer-events: none;
+  border-radius: var(--radius-md);
+  opacity: 1;
+  transition: opacity 0.2s var(--ease);
+}
+
+.empty-state.is-hidden {
+  opacity: 0;
+}
+
+.empty-icon {
+  width: 34px;
+  height: 34px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.empty-title {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.empty-text {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---- Copy toast ---- */
+.toast {
+  position: absolute;
+  bottom: -46px;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: var(--gradient);
+  color: #04121c;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+  white-space: nowrap;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* =========================================================
+   STATS GRID
+   ========================================================= */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.stat-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-soft);
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-hover);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-icon-wrap {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.10);
+  color: var(--cyan);
+  position: relative;
+  z-index: 1;
+}
+
+.stat-icon-wrap .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.stat-value {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  background: linear-gradient(120deg, #ffffff, var(--cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.stat-unit {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  -webkit-text-fill-color: var(--text-secondary);
+  margin-left: 2px;
+}
+
+.stat-label {
+  position: relative;
+  z-index: 1;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* =========================================================
+   LENGTH PULSE RAIL (signature element)
+   ========================================================= */
+.rail-card {
+  padding: 18px 20px;
+}
+
+.rail-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.rail-percent {
+  color: var(--cyan);
+}
+
+.rail-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.rail-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: var(--gradient);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.5);
+  transition: width 0.35s var(--ease);
+}
+
+.rail-hint {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+.footer {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding-top: 8px;
+}
+
+.footer strong {
+  color: var(--text-secondary);
+}
+
+.heart {
+  display: inline-block;
+  animation: beat 1.6s ease-in-out infinite;
+}
+
+@keyframes beat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.18); }
+}
+ 
+/* Links */
+.links {
+    margin-top: 20px;
+}
+
+.links a {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #0077b5;
+    color: #fff;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.links a:hover {
+    background: #005582;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 119, 181, 0.3);
+}
+
+.links a:active {
+    transform: translateY(0);
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+@media (max-width: 720px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .page {
+    padding: 48px 16px 32px;
+    gap: 32px;
+  }
+
+  .editor-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+  }
+
+  .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+  }
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+  </style>
+</head>
+<body>
+
+  <!-- Ambient background glow, purely decorative -->
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <div class="page">
+
+    <!-- ============ HEADER ============ -->
+    <header class="header">
+      <div class="eyebrow">
+        <span class="eyebrow-dot"></span>
+        Live text analysis
+      </div>
+      <h1 class="title">Character Counter</h1>
+      <p class="subtitle">Count characters, words, sentences, and more instantly.</p>
+    </header>
+
+    <!-- ============ MAIN CARD ============ -->
+    <main class="panel">
+
+      <!-- Text input area -->
+      <div class="editor-card">
+        <div class="editor-toolbar">
+          <span class="editor-label">Your text</span>
+          <div class="toolbar-actions">
+            <button id="copyBtn" class="btn btn-ghost" type="button" aria-label="Copy text to clipboard">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy</span>
+            </button>
+            <button id="clearBtn" class="btn btn-ghost btn-danger" type="button" aria-label="Clear text">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              <span>Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="textarea-wrap">
+          <!-- The main textarea users type into -->
+          <textarea
+            id="textInput"
+            class="text-input"
+            placeholder="Start typing or paste your text here…"
+            spellcheck="false"
+            aria-label="Text to analyze"
+          ></textarea>
+
+          <!-- Empty-state illustration shown only when textarea has no content -->
+          <div id="emptyState" class="empty-state">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 7V5a1 1 0 0 1 1-1h4M4 17v2a1 1 0 0 0 1 1h4M20 7V5a1 1 0 0 0-1-1h-4M20 17v2a1 1 0 0 1-1 1h-4"/>
+              <line x1="9" y1="9" x2="15" y2="9"/>
+              <line x1="9" y1="13" x2="14" y2="13"/>
+            </svg>
+            <p class="empty-title">Nothing here yet</p>
+            <p class="empty-text">Your stats will appear the moment you start typing</p>
+          </div>
+        </div>
+
+        <!-- Small copy feedback toast -->
+        <div id="toast" class="toast" role="status" aria-live="polite">Copied to clipboard</div>
+      </div>
+
+      <!-- Stats grid -->
+      <section class="stats-grid" aria-label="Text statistics">
+        <div class="stat-card" data-stat="characters">
+          <div class="stat-icon-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></div>
+          <span id="charCount" class="stat-value">0</span>
+          <span class="stat-label">Characters</span>
+        </div>
+
+        <div class="stat-card" data-stat="charsNoSpace">
+          <div class="stat-icon-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="8" rx="1"/><path d="M6 12h.01M18 12h.01"/></svg></div>
+          <span id="charNoSpaceCount" class="stat-value">0</span>
+          <span class="stat-label">No Spaces</span>
+        </div>
+
+        <div class="stat-card" data-stat="words">
+          <div class="stat-icon-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h13"/></svg></div>
+          <span id="wordCount" class="stat-value">0</span>
+          <span class="stat-label">Words</span>
+        </div>
+
+        <div class="stat-card" data-stat="sentences">
+          <div class="stat-icon-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <span id="sentenceCount" class="stat-value">0</span>
+          <span class="stat-label">Sentences</span>
+        </div>
+
+        <div class="stat-card" data-stat="lines">
+          <div class="stat-icon-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="14" y2="18"/></svg></div>
+          <span id="lineCount" class="stat-value">0</span>
+          <span class="stat-label">Lines</span>
+        </div>
+
+        <div class="stat-card" data-stat="readTime">
+          <div class="stat-icon-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></div>
+          <span id="readTime" class="stat-value">0<span class="stat-unit">s</span></span>
+          <span class="stat-label">Read Time</span>
+        </div>
+      </section>
+
+      <!-- Progress rail: fills as the reader approaches a "tweet-length" reference of 280 chars -->
+      <div class="rail-card">
+        <div class="rail-header">
+          <span>Length pulse</span>
+          <span id="railPercent" class="rail-percent">0%</span>
+        </div>
+        <div class="rail-track">
+          <div id="railFill" class="rail-fill"></div>
+        </div>
+        <span class="rail-hint">Relative to a 280-character reference length</span>
+      </div>
+
+    </main>
+
+    <footer class="footer">
+      <div class="links">
+        <a href="http://https://www.linkedin.com/in/saadat-ali-3021ab3a5/ " target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        <a href="http://https://github.com/msaadatali677-hub" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // =============================================================
+// CHARACTER COUNTER — core logic
+// =============================================================
+// Grab references to every element we need to read from or update.
+const textInput = document.getElementById("textInput");
+const emptyState = document.getElementById("emptyState");
+const toast = document.getElementById("toast");
+
+const charCountEl = document.getElementById("charCount");
+const charNoSpaceCountEl = document.getElementById("charNoSpaceCount");
+const wordCountEl = document.getElementById("wordCount");
+const sentenceCountEl = document.getElementById("sentenceCount");
+const lineCountEl = document.getElementById("lineCount");
+const readTimeEl = document.getElementById("readTime");
+
+const railFill = document.getElementById("railFill");
+const railPercent = document.getElementById("railPercent");
+
+const copyBtn = document.getElementById("copyBtn");
+const clearBtn = document.getElementById("clearBtn");
+
+// Reference length used only for the visual "length pulse" progress bar.
+const RAIL_REFERENCE_LENGTH = 280;
+// Average adult reading speed, used to estimate reading time.
+const WORDS_PER_MINUTE = 200;
+
+/**
+ * Reads the current textarea value and updates every stat on the page.
+ * This is the single function that runs on every keystroke.
+ */
+function updateStats() {
+  const text = textInput.value;
+  const isEmpty = text.length === 0;
+
+  // ---- Characters (total, including spaces & newlines) ----
+  const totalChars = text.length;
+
+  // ---- Characters excluding spaces ----
+  // \s matches spaces, tabs AND newlines, so this also strips line breaks.
+  const charsNoSpaces = text.replace(/\s/g, "").length;
+
+  // ---- Words ----
+  // Split on any run of whitespace, then filter out empty strings that
+  // appear when the text is blank or has leading/trailing whitespace.
+  const words = text.trim().length === 0 ? [] : text.trim().split(/\s+/);
+  const wordCount = words.length;
+
+  // ---- Sentences ----
+  // A sentence is approximated as a chunk of text ending in ".", "!" or "?".
+  // We match those terminators and count how many were found.
+  const sentenceMatches = text.match(/[^.!?]+[.!?]+/g);
+  // If there's leftover text with no terminating punctuation but real
+  // content in it (e.g. "Hello world" with no period), count it as one too.
+  const trailing = text.replace(/[^.!?]+[.!?]+/g, "").trim();
+  const sentenceCount = (sentenceMatches ? sentenceMatches.length : 0) + (trailing.length > 0 ? 1 : 0);
+
+  // ---- Lines ----
+  // Counting newline characters + 1 gives the number of lines, but an
+  // entirely empty textarea should show 0 lines rather than 1.
+  const lineCount = isEmpty ? 0 : text.split("\n").length;
+
+  // ---- Estimated reading time ----
+  const readSeconds = wordCount === 0 ? 0 : Math.max(1, Math.round((wordCount / WORDS_PER_MINUTE) * 60));
+
+  // ---- Push values into the DOM ----
+  charCountEl.textContent = totalChars.toLocaleString();
+  charNoSpaceCountEl.textContent = charsNoSpaces.toLocaleString();
+  wordCountEl.textContent = wordCount.toLocaleString();
+  sentenceCountEl.textContent = sentenceCount.toLocaleString();
+  lineCountEl.textContent = lineCount.toLocaleString();
+  readTimeEl.innerHTML = readSeconds < 60
+    ? `${readSeconds}<span class="stat-unit">s</span>`
+    : `${Math.round(readSeconds / 60)}<span class="stat-unit">m</span>`;
+
+  // ---- Length pulse rail ----
+  const percent = Math.min(100, Math.round((totalChars / RAIL_REFERENCE_LENGTH) * 100));
+  railFill.style.width = `${percent}%`;
+  railPercent.textContent = `${percent}%`;
+
+  // ---- Toggle the empty-state placeholder ----
+  emptyState.classList.toggle("is-hidden", !isEmpty);
+}
+
+/**
+ * Clears all text from the textarea and resets the UI back to its
+ * empty state.
+ */
+function clearText() {
+  textInput.value = "";
+  updateStats();
+  textInput.focus();
+}
+
+/**
+ * Copies the current textarea content to the user's clipboard and
+ * shows a brief confirmation toast.
+ */
+async function copyText() {
+  if (textInput.value.length === 0) return;
+
+  try {
+    await navigator.clipboard.writeText(textInput.value);
+  } catch (err) {
+    // Fallback for browsers without Clipboard API support.
+    textInput.select();
+    document.execCommand("copy");
+  }
+
+  showToast();
+}
+
+/**
+ * Briefly shows the "Copied to clipboard" toast, then hides it again.
+ */
+let toastTimeout;
+function showToast() {
+  clearTimeout(toastTimeout);
+  toast.classList.add("is-visible");
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 1600);
+}
+
+// ---- Event listeners ----
+// "input" fires on every keystroke, paste, and delete — giving us the
+// instant, real-time updates the brief asks for.
+textInput.addEventListener("input", updateStats);
+clearBtn.addEventListener("click", clearText);
+copyBtn.addEventListener("click", copyText);
+
+// Run once on load in case the browser restores previous textarea content.
+updateStats();
+  </script>
+</body>
+</html>
